@@ -1,0 +1,14 @@
+langchain>=0.0.300
+openai>=0.27.0
+fastapi>=0.95
+uvicorn[standard]>=0.22
+chromadb>=0.4.0
+sentence-transformers>=2.2.2
+requests
+python-multipart
+pdfplumber
+pymupdf
+beautifulsoup4
+playwright    
+tqdm
+gunicorn
