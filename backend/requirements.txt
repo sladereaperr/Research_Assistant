@@ -1,25 +1,26 @@
+# Core web framework
 fastapi
 uvicorn
+sse-starlette
+
+# Graph workflow
 langgraph
-langchain
-langchain-google-genai
+
+# LLM integration
 google-generativeai
+
+# Vector database
 chromadb
+
+# Web scraping and HTTP
 beautifulsoup4
-playwright
-requests
-python-dotenv
-pydantic
 aiohttp
-markdown
-plotly
+
+# Data processing and analysis
 pandas
 numpy
-scikit-learn
 scipy
-PyPDF2
-pytesseract
-Pillow
-python-multipart
-sse-starlette
-lxml
+plotly
+
+# Environment and configuration
+python-dotenv
