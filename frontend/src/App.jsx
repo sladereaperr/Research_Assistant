@@ -84,11 +84,56 @@ export default function AIResearchAssistant() {
         1000
       );
     }
-    return () => clearInterval(t);
+    return () => {
+      if (t) clearInterval(t);
+    };
   }, [isRunning, startTime]);
 
   const formatTime = (s) =>
     `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  const handleSSEData = (d, reader) => {
+    if (d.type === "message") {
+      const content =
+        typeof d.content === "string" ? d.content : JSON.stringify(d.content);
+      setMessages((m) => [...m, content]);
+      return false; // Continue processing
+    } else if (d.type === "progress") {
+      if (typeof d.value === "number") {
+        setProgress(d.value);
+      }
+      return false; // Continue processing
+    } else if (d.type === "complete") {
+      const completeResult = d.result || null;
+      // Ensure paperUrl is set even if sessionId is available
+      if (
+        completeResult &&
+        completeResult.sessionId &&
+        !completeResult.paperUrl
+      ) {
+        completeResult.paperUrl = `/api/research/paper/${completeResult.sessionId}`;
+      }
+      setResult(completeResult);
+      setIsRunning(false);
+      setStartTime(null);
+      setProgress(100);
+      // Close the reader
+      if (reader) {
+        reader.cancel();
+      }
+      return true; // Stop processing
+    } else if (d.type === "error") {
+      setError(d.message || "Unknown error");
+      setIsRunning(false);
+      setStartTime(null);
+      // Close the reader
+      if (reader) {
+        reader.cancel();
+      }
+      return true; // Stop processing
+    }
+    return false; // Continue processing
+  };
 
   const startResearch = async () => {
     setIsRunning(true);
@@ -99,50 +144,52 @@ export default function AIResearchAssistant() {
     setStartTime(Date.now());
     setElapsedTime(0);
 
+    let reader = null;
     try {
       const res = await fetch("/api/research/start", { method: "POST" });
       if (!res.ok) throw new Error("Failed to start research");
 
-      const reader = res.body.getReader();
+      reader = res.body.getReader();
       const dec = new TextDecoder();
       let buf = "";
 
       while (true) {
         const { done, value } = await reader.read();
-        if (done) break;
+        if (done) {
+          // Stream ended - ensure we're stopped
+          setIsRunning(false);
+          setStartTime(null);
+          break;
+        }
         buf += dec.decode(value, { stream: true });
         const parts = buf.split(/\r?\n/);
         buf = parts.pop() || "";
         for (const p of parts) {
-          const line = p.trim();
+          let line = p.trim();
           if (!line) continue;
-          if (line.startsWith("data:")) {
+
+          // Handle double "data:" prefix if present
+          while (line.startsWith("data:")) {
+            line = line.slice(5).trim();
+          }
+
+          // Try to parse as JSON
+          if (line.startsWith("{")) {
             try {
-              const d = JSON.parse(line.slice(5).trim());
-              if (d.type === "message") {
-                const content =
-                  typeof d.content === "string"
-                    ? d.content
-                    : JSON.stringify(d.content);
-                setMessages((m) => [...m, content]);
-              } else if (d.type === "progress") {
-                setProgress(typeof d.value === "number" ? d.value : progress);
-              } else if (d.type === "complete") {
-                const completeResult = d.result || null;
-                // Ensure paperUrl is set even if sessionId is available
-                if (
-                  completeResult &&
-                  completeResult.sessionId &&
-                  !completeResult.paperUrl
-                ) {
-                  completeResult.paperUrl = `/api/research/paper/${completeResult.sessionId}`;
-                }
-                setResult(completeResult);
-                setIsRunning(false);
-              } else if (d.type === "error") {
-                setError(d.message || "Unknown error");
-                setIsRunning(false);
-              }
+              const d = JSON.parse(line);
+              const shouldStop = handleSSEData(d, reader);
+              if (shouldStop) return; // Exit the function
+            } catch (e) {
+              // If JSON parsing fails, treat as regular message
+              setMessages((m) => [...m, line]);
+            }
+          } else if (line.startsWith("data:")) {
+            // Handle SSE format: "data: {...}"
+            try {
+              const jsonStr = line.slice(5).trim();
+              const d = JSON.parse(jsonStr);
+              const shouldStop = handleSSEData(d, reader);
+              if (shouldStop) return; // Exit the function
             } catch (e) {
               setMessages((m) => [...m, line]);
             }
@@ -157,6 +204,16 @@ export default function AIResearchAssistant() {
       setError(err.message || String(err));
       setMessages((m) => [...m, `❌ Error: ${err.message || err}`]);
       setIsRunning(false);
+      setStartTime(null);
+    } finally {
+      // Ensure reader is closed
+      if (reader) {
+        try {
+          reader.cancel();
+        } catch (e) {
+          // Ignore errors when canceling
+        }
+      }
     }
   };
 
