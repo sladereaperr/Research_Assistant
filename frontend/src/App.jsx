@@ -20,6 +20,7 @@ import {
   Workflow,
   Cog,
 } from "lucide-react";
+import { API_BASE_URL } from "./lib/api";
 
 // --- Utility to pick agent appearance ---
 const getAgentInfo = (message) => {
@@ -146,7 +147,8 @@ export default function AIResearchAssistant() {
 
     let reader = null;
     try {
-      const res = await fetch("/api/research/start", { method: "POST" });
+      const apiUrl = `${API_BASE_URL}/api/research/start`;
+      const res = await fetch(apiUrl, { method: "POST" });
       if (!res.ok) throw new Error("Failed to start research");
 
       reader = res.body.getReader();
@@ -422,8 +424,11 @@ export default function AIResearchAssistant() {
                       <a
                         className="block"
                         href={
-                          result.paperUrl ||
-                          `/api/research/paper/${result.sessionId}`
+                          result.paperUrl
+                            ? result.paperUrl.startsWith("http")
+                              ? result.paperUrl
+                              : `${API_BASE_URL}${result.paperUrl}`
+                            : `${API_BASE_URL}/api/research/paper/${result.sessionId}`
                         }
                         target="_blank"
                         rel="noreferrer"

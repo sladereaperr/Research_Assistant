@@ -12,3 +12,23 @@ beautifulsoup4
 playwright    
 tqdm
 gunicorn
+# Core web framework
+fastapi
+uvicorn
+sse-starlette
+# Graph workflow
+langgraph
+# LLM integration
+google-generativeai
+# Vector database
+chromadb
+# Web scraping and HTTP
+beautifulsoup4
+aiohttp
+# Data processing and analysis
+pandas
+numpy
+scipy
+plotly
+# Environment and configuration
+python-dotenv

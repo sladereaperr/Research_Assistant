@@ -24,3 +24,4 @@ plotly
 
 # Environment and configuration
 python-dotenv
+sse_starlette

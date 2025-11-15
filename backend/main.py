@@ -18,10 +18,16 @@ load_dotenv()
 
 app = FastAPI(title="Autonomous AI Research Assistant")
 
-# CORS middleware
+# CORS middleware - allow environment variable for production, default to all for dev
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+if allowed_origins == ["*"]:
+    allow_origins = ["*"]
+else:
+    allow_origins = [origin.strip() for origin in allowed_origins]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
